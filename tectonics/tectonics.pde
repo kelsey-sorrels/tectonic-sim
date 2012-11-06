@@ -41,12 +41,14 @@ class Plate
 {
   List<PVector> pos;
   float vx, vy;
+  color c;
   
-  Plate(List<PVector> pos, float vx, float vy)
+  Plate(List<PVector> pos, float vx, float vy, color c)
   {
     this.pos = pos;
     this.vx = vx;
     this.vy = vy;
+    this.c = c;
   }
   
   float distance(final PVector p)
@@ -61,6 +63,11 @@ class Plate
       }
     }
     return d;
+  }
+  
+  color getColor()
+  {
+    return c;
   }
   
   List<PVector> getPos()
@@ -83,9 +90,13 @@ Plate getNearestPlate(float x, float y)
 {
   PVector pos = new PVector(x, y);
   // closest plate found so far.
-  Plate r = plates.get(0);
+  Plate r = null;
   for (Plate p : plates)
   {
+    if (r == null)
+    {
+      r = plates.get(0);
+    }
     if (p.distance(pos) < r.distance(pos))
     {
       r = p;
@@ -118,9 +129,10 @@ void step(float dt)
         float cp = Float.MAX_VALUE;
         for (int l = 20; l > 0; l--)
         {
-          int r = 10;
-          int ru = wrap((int) (random(-r, r) + u) , 0, width-1);
-          int rv = wrap((int) (random(-r, r) + v), 0, height-1);
+          double r = 5*poissonRandom(5);
+          float theta = random(0, (float) (2 * Math.PI));
+          int ru = wrap((int) (r*cos(theta) + u) , 0, width-1);
+          int rv = wrap((int) (r*sin(theta) + v), 0, height-1);
           float d = (dist(i, j, ru, rv) + 1) / 10;
           float c = sq(world[ru][rv])*d;
           if (c < cp)
@@ -131,11 +143,7 @@ void step(float dt)
         }
         int pvx = (int) pv.x;
         int pvy = (int) pv.y;
-        tmpWorld[pvx][pvy] += world[i][j]/5;
-        tmpWorld[wrap(pvx+1, 0, width-1)][wrap(pvy, 0, height-1)] += world[i][j]/5;
-        tmpWorld[wrap(pvx-1, 0, width-1)][wrap(pvy, 0, height-1)] += world[i][j]/5;
-        tmpWorld[wrap(pvx, 0, width-1)][wrap(pvy+1, 0, height-1)] += world[i][j]/5;
-        tmpWorld[wrap(pvx, 0, width-1)][wrap(pvy-1, 0, height-1)] += world[i][j]/5;
+        tmpWorld[pvx][pvy] += world[i][j];
       }
       
       world[i][j] = 0;
@@ -146,7 +154,16 @@ void step(float dt)
   {
     for (int j = 0; j < height; j++)
     {
-      world[i][j] += tmpWorld[i][j];
+      world[i][j] += (tmpWorld[i][j]
+        + tmpWorld[wrap(i+1, 0, width-1)][j]
+        + tmpWorld[wrap(i-1, 0, width-1)][j]
+        + tmpWorld[i][wrap(j+1, 0, height-1)]
+        + tmpWorld[i][wrap(j-1, 0, height-1)]
+        + tmpWorld[wrap(i+1, 0, width-1)][wrap(j+1, 0, height-1)]
+        + tmpWorld[wrap(i+1, 0, width-1)][wrap(j-1, 0, height-1)]
+        + tmpWorld[wrap(i-1, 0, width-1)][wrap(j+1, 0, height-1)]
+        + tmpWorld[wrap(i-1, 0, width-1)][wrap(j-1, 0, height-1)])/9;
+        
       continue;
       // rift?
       /*if (world[i][j] == 0)
@@ -190,25 +207,57 @@ void setup()
   {
     for (int j = 0; j < height; j++)
     {
-      world[i][j] = 20*noise(i*noiseScale, j*noiseScale);
+      world[i][j] = 20*noise(i*noiseScale, j*noiseScale)+60;
     }
   }
-  
+  colorMode(HSB);
   for (int n = 0; n < 10; n++)
   {
-    float x = random(0, width);
-    float y = random(0, height);
+    float x = random(0, width-1);
+    float y = random(0, height-1);
     float theta = random(0, 2*PI);
     float vx = cos(theta);
     float vy = sin(theta);
-    for (int i = 0; i < 10; i++)
+    
+    // don't put a place near edges
+    if (x < 30 && x > width-30 && y < 30 && y > height-30)
     {
-      float px = wrap((int) (poissonRandom(800)+x), 0, width-1);
-      float py = wrap((int) (poissonRandom(800)+y), 0, height-1);
-      println("add plate at x:"+px+" y:"+py+" vx:"+vx+" vy:"+vy);
-      List<PVector> pos = new ArrayList<PVector>();
+      n--;
+      continue;
+    }
+    
+    Plate p = getNearestPlate(x, y);
+    if (p != null)
+    {
+      float d = p.distance(new PVector(x, y));
+      if (d < 120)
+      {
+        n--;
+        continue;
+      }
+    }
+    println("add parent plate at x:"+x+" y:"+y+" vx:"+vx+" vy:"+vy);
+    List<PVector> pos = new ArrayList<PVector>();
+    pos.add(new PVector(x, y));
+    color c = color(random(0, 255), 255, 200);
+    plates.add(new Plate(pos, vx, vy, c));
+  }
+  colorMode(RGB);
+  for (Plate p : plates)
+  {
+    float x = p.getPos().get(0).x;
+    float y = p.getPos().get(0).y;
+    float vx = p.getVx();
+    float vy = p.getVy();
+    for (int i = 0; i < 40; i++)
+    {
+      double r = 4 * poissonRandom(10);
+      float t = random(0, (float)(2 * Math.PI));
+      float px = wrap((int) (r*cos(t)+x), 0, width-1);
+      float py = wrap((int) (r*sin(t)+y), 0, height-1);
+      println("add plate pos at x:"+px+" y:"+py+" vx:"+vx+" vy:"+vy);
+      List<PVector> pos = p.getPos();
       pos.add(new PVector(px, py));
-      plates.add(new Plate(pos, vx, vy));
     }
   }
 }
@@ -222,23 +271,23 @@ void draw()
     for (int j = 0; j < height; j++)
     {
       color c = color(world[i][j], world[i][j], world[i][j]);
-      if (world[i][j] < 100)
+      if (world[i][j] < 80)
       {
-        pixels[j*width+i] = blendColor(c, color(30, 40, 120), SCREEN);
+        pixels[j*width+i] = blendColor(c, color(90, 120, 250), BURN);
       }
       else
       {
-        pixels[j*width+i] = c;
+        pixels[j*width+i] = blendColor(c, color(10, 100, 20), SCREEN);
       }
     }
   }
   updatePixels();
-  fill(200, 0, 0);
-  for (Plate p : plates)
+  /*for (Plate p : plates)
   {
+    fill(p.getColor());
     for (PVector pos : p.getPos())
     {
-      ellipse((int)pos.x, (int)pos.y, 10, 10);
+      ellipse((int)pos.x, (int)pos.y, 3, 3);
     }
-  }
+  }*/
 }
