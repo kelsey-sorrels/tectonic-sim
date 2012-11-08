@@ -107,6 +107,7 @@ Plate getNearestPlate(float x, float y)
 
 void step(float dt)
 {
+  println("Step");
   float tmpWorld[][] = new float[width][height];
   
   for (int i = 0; i < width; i++)
@@ -198,7 +199,7 @@ void step(float dt)
 
 void setup()
 {
-  size(400, 400);
+  size(800, 400);
   background(0);
   world = new float[width][height];
   
@@ -211,7 +212,7 @@ void setup()
     }
   }
   colorMode(HSB);
-  for (int n = 0; n < 10; n++)
+  for (int n = 0; n < 20; n++)
   {
     float x = random(0, width-1);
     float y = random(0, height-1);
@@ -230,7 +231,7 @@ void setup()
     if (p != null)
     {
       float d = p.distance(new PVector(x, y));
-      if (d < 120)
+      if (d < 60)
       {
         n--;
         continue;
@@ -251,7 +252,7 @@ void setup()
     float vy = p.getVy();
     for (int i = 0; i < 40; i++)
     {
-      double r = 4 * poissonRandom(10);
+      double r = 4 * poissonRandom(8);
       float t = random(0, (float)(2 * Math.PI));
       float px = wrap((int) (r*cos(t)+x), 0, width-1);
       float py = wrap((int) (r*sin(t)+y), 0, height-1);
