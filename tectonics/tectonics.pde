@@ -26,11 +26,16 @@ float bearing(float x, float y)
  */
 PVector dest(float x, float y, float distance, float bearing)
 {
+  if (distance == 0)
+  {
+    return new PVector(x, y);
+  }
   float lat0 = (float)(y/height*Math.PI-Math.PI/2);
   float lon0 = (float)(x/width*2*Math.PI-Math.PI);
   double lat1 = asin(sin(lat0)*cos(distance) + cos(lat0)*sin(distance)*cos(bearing));
-  float lon1 = lon0 + atan2(sin(distance)*sin(bearing), cos(distance)*cos(lat0)
-    - cos(bearing)*sin(distance)*sin(lat0));
+  float lon1 = lon0 + atan2(
+    sin(distance)*sin(bearing),
+    cos(distance)*cos(lat0) - cos(bearing)*sin(distance)*sin(lat0));
   return new PVector((float)(width * (lon1+Math.PI)/(2 * Math.PI)), (float)(height* (lat1+Math.PI/2)/(Math.PI)));
 }
 
@@ -162,9 +167,23 @@ void step(float dt)
 {
   println("Step");
   
-  for (int i = 0; i < width; i++)
+  // Randomly iterate over (i,j). If not random ,then collision order is always the same and that kind
+  // of blows. It means some areas will be favored over others, usually the upper left.
+  List<Integer> is = new ArrayList<Integer>();
+  List<Integer> js = new ArrayList<Integer>();
+  for (int i = 0; i < width; i++) {
+      is.add(i);
+  }
+  for (int j = 0; j < height; j++) {
+      js.add(j);
+  }
+  
+  Collections.shuffle(is);
+  Collections.shuffle(js);
+  
+  for (int i : is)
   {
-    for (int j = 0; j < height; j++)
+    for (int j : js)
     {
       final Plate p = getNearestPlate(i, j);
       float h = world[i][j];
@@ -175,7 +194,7 @@ void step(float dt)
 
       if (tmpWorld[u][v] == 0)
       {
-        tmpWorld[u][v] += world[i][j];
+        tmpWorld[u][v] = world[i][j];
       }
       else
       {
@@ -204,8 +223,7 @@ void step(float dt)
     }
   }
   
-  
-  float noiseScale = 0.044;
+  float noiseScale = 0.22;
   for (int i = 0; i < width; i++)
   {
     for (int j = 0; j < height; j++)
@@ -213,7 +231,7 @@ void step(float dt)
       // rift?
       if (tmpWorld[i][j] == 0)
       {
-        tmpWorld[i][j] = 140*noise(i*noiseScale, j*noiseScale);
+        tmpWorld[i][j] = 200*noise(i*noiseScale, j*noiseScale);
       }
       world[i][j] += (tmpWorld[i][j]
         + tmpWorld[wrap(i+1, 0, width-1)][j]
@@ -249,20 +267,20 @@ void setup()
   {
     for (int j = 0; j < height; j++)
     {
-      world[i][j] = 20*noise(i*noiseScale, j*noiseScale)+60;
+      world[i][j] = 5*noise(i*noiseScale, j*noiseScale)+60;
     }
   }
   colorMode(HSB);
   for (int n = 0; n < 20; n++)
   {
-    float v = random(0, 1);
+    float v = random(0.7, 1);
     float x = random(0, width-1);
     float y = random(0, height-1);
     float theta = random(0, 2*PI);
     float vx = v * cos(theta);
     float vy = v * sin(theta);
     
-    // don't put a place near edges
+    // don't put a plate near edges
     if (x < width/10 && x > width-width/10 && y < height/10 && y > height-height/10)
     {
       n--;
@@ -290,9 +308,10 @@ void setup()
   {
     float x = p.getPos().get(0).x;
     float y = p.getPos().get(0).y;
+    
     float vx = p.getVx();
     float vy = p.getVy();
-    for (int i = 0; i < 40; i++)
+    for (int i = 0; i < 80; i++)
     {
       double r = width/120 * poissonRandom(8);
       float t = random(0, (float)(2 * Math.PI));
@@ -313,7 +332,7 @@ void draw()
     for (int j = 0; j < height; j++)
     {
       color c = color(world[i][j], world[i][j], world[i][j]);
-      if (world[i][j] < 80)
+      if (world[i][j] < 120)
       {
         pixels[j*width+i] = blendColor(c, color(90, 120, 250), BURN);
       }
@@ -324,13 +343,22 @@ void draw()
     }
   }
   updatePixels();
-  /*for (Plate p : plates)
+  
+  float dt = 0.05f;
+
+  /*stroke(color(255, 0, 0));
+  for (Plate p : plates)
   {
     fill(p.getColor());
     for (PVector pos : p.getPos())
     {
-      ellipse((int)pos.x, (int)pos.y, 3, 3);
+      PVector d = dest(pos.x, pos.y, dt*dist(0, 0, p.getVx(), p.getVy()), bearing(p.getVx(), p.getVy()));
+     
+      int u = wrap((int) d.x, 0, width-1);
+      int v = wrap((int) d.y, 0, height-1);
+      line(pos.x, pos.y, u, v);
+      ellipse((int)pos.x, (int)pos.y, 5, 5);
     }
   }*/
-  step(0.005);
+  step(dt);
 }
