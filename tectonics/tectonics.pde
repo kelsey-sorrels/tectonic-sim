@@ -27,11 +27,11 @@ float bearing(float x, float y)
 PVector dest(float x, float y, float distance, float bearing)
 {
   float lat0 = (float)(y/height*Math.PI-Math.PI/2);
-  float lon0 = (float)(x/width*2*Math.PI);
-  float lat1 = FastMath.asin(sin(lat0)*cos(distance) + cos(lat0)*sin(distance)*cos(bearing));
-  float lon1 = lon0 + FastMath.atan2(sin(distance)*sin(bearing), cos(distance)*cos(lat0)
+  float lon0 = (float)(x/width*2*Math.PI-Math.PI);
+  double lat1 = asin(sin(lat0)*cos(distance) + cos(lat0)*sin(distance)*cos(bearing));
+  float lon1 = lon0 + atan2(sin(distance)*sin(bearing), cos(distance)*cos(lat0)
     - cos(bearing)*sin(distance)*sin(lat0));
-  return new PVector((float)(width * lon1/(2 * Math.PI)), (float)(height* (lat1+Math.PI/2)/(Math.PI)));
+  return new PVector((float)(width * (lon1+Math.PI)/(2 * Math.PI)), (float)(height* (lat1+Math.PI/2)/(Math.PI)));
 }
 
 float distSq(float x0, float y0, float x1, float y1)
@@ -80,6 +80,7 @@ public static double poissonRandom(float expectedValue)
 
 float[][] world = null;
 float tmpWorld[][] = null;
+Plate[][] plateCache = null;
 
 class Plate
 {
@@ -132,6 +133,10 @@ List<Plate> plates = new ArrayList<Plate>();
 
 Plate getNearestPlate(float x, float y)
 {
+  if (plateCache[(int)x][(int)y] != null)
+  {
+    return plateCache[(int)x][(int)y];
+  }
   PVector pos = new PVector(x, y);
   // closest plate found so far.
   Plate r = null;
@@ -149,6 +154,7 @@ Plate getNearestPlate(float x, float y)
       d = p.distanceSq(pos);
     }
   }
+  plateCache[(int)x][(int)y] = r;
   return r;
 }
 
@@ -177,9 +183,9 @@ void step(float dt)
         float cp = Float.MAX_VALUE;
         for (int l = 5; l > 0; l--)
         {
-          float r = (float)(width/200*poissonRandom(5));
+          float r = (float)(0.00005 * width * poissonRandom(5));
           float theta = random(0, (float) (2 * Math.PI));
-          PVector rd = dest(i, j, dt * r, theta);
+          PVector rd = dest(i, j, r, theta);
           int ru = wrap((int) rd.x, 0, width-1);
           int rv = wrap((int) rd.y, 0, height-1);
           float c = sq(world[ru][rv])*(sqrt(wrapDistSq(i, j, ru, rv)) + 1) / 10;
@@ -236,6 +242,7 @@ void setup()
   
   world = new float[width][height];
   tmpWorld = new float[width][height];
+  plateCache = new Plate[width][height];
   
   float noiseScale = 0.022;
   for (int i = 0; i < width; i++)
@@ -285,7 +292,7 @@ void setup()
     float y = p.getPos().get(0).y;
     float vx = p.getVx();
     float vy = p.getVy();
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 40; i++)
     {
       double r = width/120 * poissonRandom(8);
       float t = random(0, (float)(2 * Math.PI));
@@ -325,5 +332,5 @@ void draw()
       ellipse((int)pos.x, (int)pos.y, 3, 3);
     }
   }*/
-  step(0.01);
+  step(0.005);
 }

@@ -104,11 +104,11 @@ public class FastMath
         }
     }
     
-    public static final float asin(double x)
+    public static double asin(double x)
     {
       //return FastMath.atan2(x, Math.sqrt ((1.0 + x) * (1.0 - x)));
       return 0.032843701 + (-1.451838349 + (29.66153956 +
-        (-131.1123477 + (2628130562 + (-242.7199627 + 84.31466202 * x) * x) * x) * x) *x) *x);
+        (-131.1123477 + (262.8130562 + (-242.7199627 + 84.31466202 * x) * x) * x) * x) *x) *x;
     }
     public static final float acos(double x)
     {
